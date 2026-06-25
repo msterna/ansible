@@ -36,6 +36,24 @@
         src: "{{ template_dir }}/npm-compose.yml.j2"
         dest: /opt/npm/docker-compose.yml
 
+    - name: Create docker config directory
+      ansible.builtin.file:
+        path: /etc/docker
+        state: directory
+        mode: "0755"
+
+    - name: Configure Docker
+      ansible.builtin.template:
+        src: "{{ template_dir }}/daemon.json.j2"
+        dest: /etc/docker/daemon.json
+        mode: "0644"
+      notify: restart docker
+
+    - name: restart docker
+      ansible.builtin.systemd:
+        name: docker
+        state: restarted
+
     - name: Start NPM
       community.docker.docker_compose_v2:
         project_src: /opt/npm
