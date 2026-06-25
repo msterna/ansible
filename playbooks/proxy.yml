@@ -3,13 +3,16 @@
   hosts: proxy
   become: true
 
+  vars_files:
+    - ../group_vars/all/vars.yml
+
   tasks:
 
     - name: Install Docker
       apt:
         name:
           - docker.io
-          - docker-compose-v2
+          - docker-compose
         state: present
         update_cache: true
 
@@ -30,7 +33,7 @@
 
     - name: Deploy compose
       template:
-        src: "{{ templates_dir }}/npm-compose.yml.j2"
+        src: "{{ template_dir }}/npm-compose.yml.j2"
         dest: /opt/npm/docker-compose.yml
 
     - name: Start NPM
