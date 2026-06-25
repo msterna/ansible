@@ -9,32 +9,12 @@
   tasks:
 
     - name: Install Docker
-      apt:
+      ansible.builtin.apt:
         name:
           - docker.io
           - docker-compose
         state: present
         update_cache: true
-
-    - name: Enable Docker
-      systemd:
-        name: docker
-        enabled: true
-        state: started
-
-    - name: Create directories
-      file:
-        path: "{{ item }}"
-        state: directory
-      loop:
-        - /opt/npm
-        - /opt/npm/data
-        - /opt/npm/letsencrypt
-
-    - name: Deploy compose
-      template:
-        src: "{{ template_dir }}/npm-compose.yml.j2"
-        dest: /opt/npm/docker-compose.yml
 
     - name: Create docker config directory
       ansible.builtin.file:
@@ -49,11 +29,53 @@
         mode: "0644"
       notify: restart docker
 
-    - name: restart docker
+    - name: Apply Docker configuration
+      ansible.builtin.meta: flush_handlers
+
+    - name: Enable Docker
       ansible.builtin.systemd:
         name: docker
-        state: restarted
+        enabled: true
+        state: started
+
+    - name: Create directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - /opt/npm
+        - /opt/npm/data
+        - /opt/npm/letsencrypt
+
+    - name: Deploy compose
+      ansible.builtin.template:
+        src: "{{ template_dir }}/npm-compose.yml.j2"
+        dest: /opt/npm/docker-compose.yml
+        mode: "0644"
+
+    - name: Check Docker storage driver
+      ansible.builtin.command:
+        cmd: docker info --format '{{ "{{ .Driver }}" }}'
+      register: docker_driver
+      changed_when: false
+
+    - name: Show Docker storage driver
+      ansible.builtin.debug:
+        var: docker_driver.stdout
+
+    - name: Fail if Docker is not using overlay2
+      ansible.builtin.fail:
+        msg: "Docker is using {{ docker_driver.stdout }} instead of overlay2"
+      when: docker_driver.stdout != "overlay2"
 
     - name: Start NPM
       community.docker.docker_compose_v2:
         project_src: /opt/npm
+
+  handlers:
+
+    - name: restart docker
+      ansible.builtin.systemd:
+        name: docker
+        state: restarted
