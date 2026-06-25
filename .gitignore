@@ -4,3 +4,4 @@ _ignore/
 ansible.cfg
 .DS_Store
 inventories/generated_inventory.ini
+playbooks/set_container_lxc.yml
