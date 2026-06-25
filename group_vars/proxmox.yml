@@ -33,9 +33,8 @@ containers:
     swap: 512
     disk: 8
 
-    features:
-      nesting: true
-      keyctl: true
+    # Docker inside LXC requires nesting + keyctl
+    features: "nesting=1,keyctl=1"   
 
   - vmid: 103
     hostname: web01

@@ -5,7 +5,7 @@ pve01 ansible_host={{ hostvars['pve01'].ansible_host }}
 [proxmox:vars]
 ansible_user=root
 
-{% set service_groups = ['web','db','postfix','rustdesk','django'] %}
+{% set service_groups = ['proxy','web','db','postfix','rustdesk','django'] %}
 
 {% for group in service_groups %}
 

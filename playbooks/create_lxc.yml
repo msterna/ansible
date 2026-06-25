@@ -55,6 +55,15 @@
 
       loop: "{{ containers }}"
 
+    - name: Configure LXC features
+      ansible.builtin.command:
+        cmd: >
+          pct set {{ item.vmid + vmid_offset[deploy_env] }}
+          -features {{ item.features }}
+      loop: "{{ containers }}"
+      when:
+        - item.features is defined
+
     - name: Wait for containers to start
       ansible.builtin.pause:
         seconds: 5
