@@ -1,0 +1,38 @@
+---
+- name: Configure NPM
+  hosts: proxy
+  become: true
+
+  tasks:
+
+    - name: Install Docker
+      apt:
+        name:
+          - docker.io
+          - docker-compose-v2
+        state: present
+        update_cache: true
+
+    - name: Enable Docker
+      systemd:
+        name: docker
+        enabled: true
+        state: started
+
+    - name: Create directories
+      file:
+        path: "{{ item }}"
+        state: directory
+      loop:
+        - /opt/npm
+        - /opt/npm/data
+        - /opt/npm/letsencrypt
+
+    - name: Deploy compose
+      template:
+        src: "{{ templates_dir }}/npm-compose.yml.j2"
+        dest: /opt/npm/docker-compose.yml
+
+    - name: Start NPM
+      community.docker.docker_compose_v2:
+        project_src: /opt/npm

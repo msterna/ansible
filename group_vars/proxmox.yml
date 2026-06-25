@@ -33,6 +33,10 @@ containers:
     swap: 512
     disk: 8
 
+    features:
+      nesting: true
+      keyctl: true
+
   - vmid: 103
     hostname: web01
     role: web

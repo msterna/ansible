@@ -33,6 +33,9 @@
         memory: "{{ item.memory }}"
         swap: "{{ item.swap }}"
         disk: "{{ item.disk }}"
+
+        features: "{{ item.features | default(omit) }}"
+        
         netif:
           net0: "name=eth0,bridge=vmbr0,ip=10.1.0.{{ item.ip_octet + ip_offset[deploy_env] }}/22,gw=10.1.0.1"
         password: "{{ lookup('password', '/tmp/lxcpass chars=ascii_letters,digits length=20') }}"
