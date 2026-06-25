@@ -64,10 +64,6 @@
       when:
         - item.features is defined
 
-    - name: Wait for containers to start
-      ansible.builtin.pause:
-        seconds: 5
-
     - name: Wait for container
       ansible.builtin.command:
         cmd: >
