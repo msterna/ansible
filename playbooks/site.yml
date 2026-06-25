@@ -1,0 +1,15 @@
+---
+# Wstępne przygotowanie kontenerów
+- import_playbook: bootstrap_lxc.yml
+
+- import_playbook: common.yml
+
+- import_playbook: web.yml
+
+- import_playbook: db.yml
+
+# - import_playbook: postfix.yml
+
+- import_playbook: rustdesk.yml
+
+# - import_playbook: django.yml

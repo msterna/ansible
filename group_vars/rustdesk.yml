@@ -1,0 +1,12 @@
+---
+rustdesk_version: "1.1.15"
+
+rustdesk_base_url: "https://github.com/rustdesk/rustdesk-server/releases/download"
+
+rustdesk_packages:
+  - rustdesk-server-hbbs
+  - rustdesk-server-hbbr
+
+rustdesk_arch: amd64
+
+rustdesk_dir: /opt/rustdesk

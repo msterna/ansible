@@ -1,0 +1,60 @@
+---
+- name: Install RustDesk Server
+  hosts: rustdesk
+  become: true
+
+  vars_files:
+  - ../group_vars/rustdesk.yml
+
+  tasks:
+
+    - name: Install dependencies
+      ansible.builtin.apt:
+        name:
+          - wget
+          - ca-certificates
+        state: present
+        update_cache: true
+
+
+    - name: Create RustDesk directory
+      ansible.builtin.file:
+        path: "{{ rustdesk_dir }}"
+        state: directory
+        mode: "0755"
+
+
+    - name: Download hbbs package
+      ansible.builtin.get_url:
+        url: "{{ rustdesk_base_url }}/{{ rustdesk_version }}/rustdesk-server-hbbs_{{ rustdesk_version }}_{{ rustdesk_arch }}.deb"
+        dest: "/tmp/rustdesk-server-hbbs.deb"
+        mode: "0644"
+
+
+    - name: Download hbbr package
+      ansible.builtin.get_url:
+        url: "{{ rustdesk_base_url }}/{{ rustdesk_version }}/rustdesk-server-hbbr_{{ rustdesk_version }}_{{ rustdesk_arch }}.deb"
+        dest: "/tmp/rustdesk-server-hbbr.deb"
+        mode: "0644"
+
+
+    - name: Install RustDesk packages
+      ansible.builtin.apt:
+        deb: "/tmp/{{ item }}"
+      loop: 
+        - rustdesk-server-hbbs.deb
+        - rustdesk-server-hbbr.deb
+
+
+    - name: Enable hbbs
+      ansible.builtin.systemd:
+        name: rustdesk-hbbs.service
+        enabled: true
+        state: started
+
+
+    - name: Enable hbbr
+      ansible.builtin.systemd:
+        name: rustdesk-hbbr.service
+        enabled: true
+        state: started

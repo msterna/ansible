@@ -1,0 +1,127 @@
+---
+- name: MariaDB server
+  hosts: db
+  become: yes
+
+  vars_files:
+    - ../group_vars/proxmox.yml
+    - ../group_vars/all/vars.yml
+    - ../group_vars/all/vault.yml
+    - ../group_vars/db.yml
+
+  tasks:
+
+    - name: Aktualizacja repozytorium
+      apt:
+        update_cache: yes
+
+    - name: Instalacja MariaDB
+      apt:
+        name:
+          - mariadb-server
+          - mariadb-client
+          - python3-pymysql
+        state: present
+
+    - name: Uruchomienie MariaDB
+      systemd:
+        name: mariadb
+        state: started
+        enabled: yes
+
+
+    - name: Konfiguracja nasłuchu MariaDB
+      lineinfile:
+        path: /etc/mysql/mariadb.conf.d/50-server.cnf
+        regexp: '^bind-address'
+        line: "bind-address = {{ db_bind_address }}"
+      notify: restart mariadb
+
+
+    - name: Usunięcie anonimowych użytkowników
+      community.mysql.mysql_user:
+        login_user: root
+        login_password: "{{ mariadb_root_password }}"
+        name: ''
+        host_all: yes
+        state: absent
+        login_unix_socket: /run/mysqld/mysqld.sock
+
+
+    - name: Utworzenie bazy Joomla
+      community.mysql.mysql_db:
+        login_user: root
+        login_password: "{{ mariadb_root_password }}"
+        name: joomla
+        state: present
+        encoding: utf8mb4
+        collation: utf8mb4_unicode_ci
+        login_unix_socket: /run/mysqld/mysqld.sock
+
+
+    - name: Użytkownik Joomla
+      community.mysql.mysql_user:
+        login_user: root
+        login_password: "{{ mariadb_root_password }}"
+        name: joomla
+        password: "{{ joomla_db_password }}"
+        host: "{{ web_host }}"
+        priv: "joomla.*:ALL"
+        state: present
+        login_unix_socket: /run/mysqld/mysqld.sock
+
+    - name: Create phpMyAdmin database
+      community.mysql.mysql_db:
+        login_user: root
+        login_password: "{{ mariadb_root_password }}"
+        name: "{{ phpmyadmin_db_name }}"
+        state: present
+        login_unix_socket: /run/mysqld/mysqld.sock
+
+
+    - name: Create phpMyAdmin control user
+      community.mysql.mysql_user:
+        login_user: root
+        login_password: "{{ mariadb_root_password }}"
+        name: "{{ phpmyadmin_db_user }}"
+        host: "{{ web_host }}"
+        password: "{{ phpmyadmin_db_password }}"
+        priv: "{{ phpmyadmin_db_name }}.*:ALL"
+        state: present
+        login_unix_socket: /run/mysqld/mysqld.sock
+
+    - name: Copy phpMyAdmin schema
+      ansible.builtin.copy:
+        src: "{{ files_dir }}/create_tables.sql"
+        dest: /tmp/create_tables.sql
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Import phpMyAdmin schema
+      community.mysql.mysql_db:
+        login_user: root
+        login_password: "{{ mariadb_root_password }}"
+        name: "{{ phpmyadmin_db_name }}"
+        state: import
+        target: /tmp/create_tables.sql
+        login_unix_socket: /run/mysqld/mysqld.sock
+
+    - name: Create database admin user for phpMyAdmin
+      community.mysql.mysql_user:
+        login_user: root
+        login_password: "{{ mariadb_root_password }}"
+        login_unix_socket: /run/mysqld/mysqld.sock
+        name: dbadmin
+        host: "{{ web_host }}"
+        password: "{{ dbadmin_password }}"
+        priv: "*.*:ALL,GRANT"
+        state: present
+
+  handlers:
+
+    - name: restart mariadb
+      systemd:
+        name: mariadb
+        state: restarted
+        

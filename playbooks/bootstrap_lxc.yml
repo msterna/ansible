@@ -1,0 +1,145 @@
+---
+- name: Bootstrap LXC containers from Proxmox
+  hosts: proxmox
+  become: yes
+  gather_facts: false
+
+  vars_files:
+    - ../group_vars/proxmox.yml
+    - ../group_vars/all/vars.yml
+    - ../group_vars/all/vault.yml
+
+  vars:
+    lxc_containers: "{{ hostvars[inventory_hostname].containers | default(containers | default([])) }}"
+
+  tasks:
+
+  - name: Validate LXC container definitions
+    ansible.builtin.assert:
+      that:
+        - lxc_containers | length > 0
+        - deploy_env in vmid_offset
+      fail_msg: >-
+        Missing container definitions for {{ inventory_hostname }} or invalid
+        deploy_env. Check group_vars/proxmox.yml and inventory group membership.
+
+  - name: Wait for container
+    ansible.builtin.command:
+      cmd: >
+        pct exec {{ container.vmid + vmid_offset[deploy_env] }} --
+        bash -c "echo ready"
+    register: ready
+    retries: 20
+    delay: 5
+    until: ready.rc == 0
+    changed_when: false
+    loop: "{{ lxc_containers }}"
+    loop_control:
+      loop_var: container
+
+  - name: Set root password
+    ansible.builtin.command:
+      cmd: >
+        pct exec {{ container.vmid + vmid_offset[deploy_env] }}
+        --
+        bash -c "echo 'root:{{ admin_password }}' | chpasswd"
+    no_log: true
+    loop: "{{ lxc_containers }}"
+    loop_control:
+      loop_var: container
+
+  - name: Install apt cache
+    ansible.builtin.command:
+      cmd: >
+        pct exec {{ container.vmid + vmid_offset[deploy_env] }}
+        -- apt-get update
+    loop: "{{ lxc_containers }}"
+    loop_control:
+      loop_var: container
+
+  - name: Install sudo
+    ansible.builtin.command:
+      cmd: >
+        pct exec {{ container.vmid + vmid_offset[deploy_env] }}
+        -- apt-get install -y sudo
+    loop: "{{ lxc_containers }}"
+    loop_control:
+      loop_var: container
+
+  - name: Create admin user
+    ansible.builtin.command:
+      cmd: >
+        pct exec {{ container.vmid + vmid_offset[deploy_env] }}
+        --
+        bash -c "id -u {{ admin_user }} >/dev/null 2>&1 ||
+        useradd -m -s /bin/bash {{ admin_user }}"
+    loop: "{{ lxc_containers }}"
+    loop_control:
+      loop_var: container
+
+  - name: Set password for admin user
+    ansible.builtin.command:
+      cmd: >
+        pct exec {{ container.vmid + vmid_offset[deploy_env] }} --
+        bash -c "echo '{{ admin_user }}:{{ admin_password }}' | chpasswd"
+    no_log: true # Ukrywa hasło w logach Ansible
+    loop: "{{ lxc_containers }}"
+    loop_control:
+      loop_var: container
+
+  - name: Add sudo
+    ansible.builtin.command:
+      cmd: >
+        pct exec {{ container.vmid + vmid_offset[deploy_env] }}
+        --
+        usermod -aG sudo {{ admin_user }}
+    loop: "{{ lxc_containers }}"
+    loop_control:
+      loop_var: container
+
+  - name: Allow admin passwordless sudo
+    ansible.builtin.command:
+      cmd: >
+        pct exec {{ container.vmid + vmid_offset[deploy_env] }}
+        --
+        bash -c "echo '{{ admin_user }} ALL=(ALL) NOPASSWD:ALL'
+        > /etc/sudoers.d/{{ admin_user }}
+        && chmod 0440 /etc/sudoers.d/{{ admin_user }}
+        && visudo -cf /etc/sudoers.d/{{ admin_user }}"
+    loop: "{{ lxc_containers }}"
+    loop_control:
+      loop_var: container
+
+  - name: Create ssh dir
+    ansible.builtin.command:
+      cmd: >
+        pct exec {{ container.vmid + vmid_offset[deploy_env] }}
+        --
+        mkdir -p /home/{{ admin_user }}/.ssh
+    loop: "{{ lxc_containers }}"
+    loop_control:
+      loop_var: container
+
+  - name: Install ssh key
+    ansible.builtin.command:
+      cmd: >
+        pct exec {{ container.vmid + vmid_offset[deploy_env] }}
+        --
+        bash -c
+        "echo '{{ admin_ssh_key }}'
+        > /home/{{ admin_user }}/.ssh/authorized_keys"
+    no_log: true
+    loop: "{{ lxc_containers }}"
+    loop_control:
+      loop_var: container
+
+  - name: Fix permissions
+    ansible.builtin.command:
+      cmd: >
+        pct exec {{ container.vmid + vmid_offset[deploy_env] }}
+        --
+        chown -R {{ admin_user }}:{{ admin_user }}
+        /home/{{ admin_user }}/.ssh
+    loop: "{{ lxc_containers }}"
+    loop_control:
+      loop_var: container

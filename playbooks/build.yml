@@ -1,0 +1,9 @@
+---
+# Przygotowanie obrazu Debiana
+- import_playbook: prepare_proxmox.yml
+
+# Dodanie proxmoxer przez pip
+- import_playbook: install_proxmox_python.yml
+
+# Tworzenie kontenerów
+- import_playbook: create_lxc.yml

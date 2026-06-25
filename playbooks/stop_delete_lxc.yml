@@ -1,0 +1,27 @@
+---
+- name: Stop and delete LXC containers
+  hosts: proxmox
+  gather_facts: false
+
+  tasks:
+
+    - name: Confirm test environment
+      ansible.builtin.assert:
+        that:
+          - deploy_env == "test"
+        fail_msg: "Usuwanie dozwolone tylko dla TEST!"
+
+    - name: Stop containers
+      ansible.builtin.command:
+        cmd: >
+          pct stop {{ item.vmid + vmid_offset[deploy_env] }}
+      loop: "{{ containers }}"
+      register: stop_result
+      failed_when: false
+
+
+    - name: Delete containers
+      ansible.builtin.command:
+        cmd: >
+          pct destroy {{ item.vmid + vmid_offset[deploy_env] }} --purge 1
+      loop: "{{ containers }}"

@@ -1,0 +1,92 @@
+---
+- name: Create LXC containers
+  hosts: proxmox
+  become: yes
+
+  tasks:
+
+    - name: Find Debian template
+      ansible.builtin.shell:
+        cmd: >
+          pveam available |
+          awk '/{{ template_name }}/ {print $2; exit}'
+      register: deb_template
+      changed_when: false
+
+    - name: Create containers
+      community.proxmox.proxmox:
+        validate_certs: false
+        api_host: "{{ proxmox_api_host }}"
+        api_user: "{{ proxmox_api_user }}"
+        api_password: "{{ proxmox_api_password }}"
+        vmid: "{{ item.vmid + vmid_offset[deploy_env] }}"
+        node: "{{ node }}"
+        hostname: >-
+          {{
+            item.hostname
+            if deploy_env == 'prod'
+            else item.hostname ~ '-test'
+          }}
+        ostemplate: "{{ template_storage }}:vztmpl/{{ deb_template.stdout }}"
+        storage: "{{ storage }}"
+        cores: "{{ item.cores }}"
+        memory: "{{ item.memory }}"
+        swap: "{{ item.swap }}"
+        disk: "{{ item.disk }}"
+        netif:
+          net0: "name=eth0,bridge=vmbr0,ip=10.1.0.{{ item.ip_octet + ip_offset[deploy_env] }}/22,gw=10.1.0.1"
+        password: "{{ lookup('password', '/tmp/lxcpass chars=ascii_letters,digits length=20') }}"
+        unprivileged: true
+        state: present
+
+      loop: "{{ containers }}"
+      register: created_lxc
+
+    - name: Start containers
+      community.proxmox.proxmox:
+        api_host: "{{ proxmox_api_host }}"
+        api_user: "{{ proxmox_api_user }}"
+        api_password: "{{ proxmox_api_password }}"
+        node: "{{ proxmox_node }}"
+        vmid: "{{ item.vmid + vmid_offset[deploy_env] }}"
+        state: started
+      loop: "{{ containers }}"
+
+    - name: Wait for containers to start
+      ansible.builtin.pause:
+        seconds: 5
+
+    - name: Add created containers to inventory
+      ansible.builtin.add_host:
+        name: "{{ item.item.hostname }}"
+        groups: 
+          - new_lxc
+          - "{{ item.item.role }}"
+
+        ansible_host: "10.1.0.{{ item.item.ip_octet + ip_offset[deploy_env] }}"
+        ansible_user: admin
+        ansible_become: true
+        ansible_become_method: sudo
+
+      loop: "{{ created_lxc.results }}"
+      when: item.changed
+
+    - name: Show dynamic hosts
+      ansible.builtin.debug:
+        msg:
+          - "WEB={{ groups['web'] | default([]) }}"
+          - "DB={{ groups['db'] | default([]) }}"
+    
+    - name: Show service IPs
+      ansible.builtin.debug:
+        msg:
+          - "DB IP={{ hostvars[groups['db'][0]].ansible_host }}"
+          - "WEB IP={{ hostvars[groups['web'][0]].ansible_host }}"
+
+    - name: Save generated inventory
+      delegate_to: localhost
+      become: false
+      run_once: true
+      ansible.builtin.template:
+        src: ../templates/generated_inventory.ini.j2
+        dest: ../inventories/generated_inventory.ini

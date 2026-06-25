@@ -1,0 +1,4 @@
+phpmyadmin_db_name: phpmyadmin
+phpmyadmin_db_user: pma
+
+db_bind_address: "{{ ansible_host }}"

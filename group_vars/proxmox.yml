@@ -1,0 +1,82 @@
+template_storage: local
+template_name: debian-13-standard
+
+deploy_env: test
+
+proxmox_api_host: 10.1.0.100
+proxmox_api_user: root@pam
+
+
+
+validate_certs: false
+
+vmid_offset:
+  prod: 0
+  test: 100
+
+ip_offset:
+  prod: 0
+  test: 20
+
+node: proxmox
+
+storage: local-lvm
+
+containers:
+
+  - vmid: 102
+    hostname: proxy01
+    role: proxy
+    ip_octet: 102
+    cores: 2
+    memory: 1024
+    swap: 512
+    disk: 8
+
+  - vmid: 103
+    hostname: web01
+    role: web
+    ip_octet: 103
+    cores: 4
+    memory: 4096
+    swap: 1024
+    disk: 32
+
+  - vmid: 104
+    hostname: db01
+    role: db
+    ip_octet: 104
+    cores: 2
+    memory: 2048
+    swap: 512
+    disk: 20
+
+  - vmid: 105
+    hostname: postfix01
+    role: postfix
+    ip_octet: 105
+    cores: 2
+    memory: 1024
+    swap: 512
+    disk: 10
+
+  - vmid: 106
+    hostname: rustdesk01
+    role: rustdesk
+    ip_octet: 106
+    cores: 2
+    memory: 1024
+    swap: 512
+    disk: 8
+
+  - vmid: 107
+    hostname: django01
+    role: django
+    ip_octet: 107
+    cores: 2
+    memory: 2048
+    swap: 512
+    disk: 20
+
+admin_user: admin
+admin_ssh_key: "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"

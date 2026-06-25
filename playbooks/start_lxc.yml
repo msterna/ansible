@@ -1,0 +1,19 @@
+---
+- name: Start LXC containers
+  hosts: proxmox
+  become: false
+
+  tasks:
+
+    - name: Start containers
+      community.proxmox.proxmox:
+        api_host: "{{ proxmox_api_host }}"
+        api_user: "{{ proxmox_api_user }}"
+        api_password: "{{ proxmox_api_password }}"
+        validate_certs: false
+
+        node: "{{ node }}"
+        vmid: "{{ item.vmid + vmid_offset[deploy_env] }}"
+        state: started
+
+      loop: "{{ containers }}"

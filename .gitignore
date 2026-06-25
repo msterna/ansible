@@ -1,0 +1,6 @@
+_ignore/
+*.log
+*.txt
+ansible.cfg
+.DS_Store
+inventories/generated_inventory.ini

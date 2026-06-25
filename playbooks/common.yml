@@ -1,0 +1,30 @@
+---
+- name: Common setup
+  hosts: servers
+  become: yes
+
+  tasks:
+
+    - name: Aktualizacja pakietów
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Podstawowe narzędzia
+      apt:
+        name:
+          - vim
+          - curl
+          - wget
+          - htop
+          - ncdu
+          - unzip
+          - ca-certificates
+          - chrony
+          - mc
+        state: present
+
+    - name: Ustawienie timezone
+      community.general.timezone:
+        name: Europe/Warsaw
+        

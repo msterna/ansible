@@ -1,0 +1,13 @@
+---
+- name: Install Proxmox Ansible dependencies
+  hosts: proxmox
+  become: yes
+
+  tasks:
+
+    - name: Install proxmoxer via pip
+      ansible.builtin.pip:
+        name:
+          - proxmoxer>=2.3
+        executable: pip3
+        extra_args: --break-system-packages

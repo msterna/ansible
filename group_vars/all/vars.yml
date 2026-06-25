@@ -1,0 +1,28 @@
+environment_domain: ofiarowanie.ddnsfree.com
+
+phpmyadmin_db_name: phpmyadmin
+phpmyadmin_db_user: pma
+
+phpmyadmin_db_password: "{{ vault_phpmyadmin_db_password }}"
+
+mariadb_root_password: "{{ vault_mariadb_root_password }}"
+
+dbadmin_password: "{{ vault_dbadmin_password }}"
+
+joomla_db_password: "{{ vault_joomla_db_password }}"
+
+proxmox_api_password: "{{ vault_proxmox_api_password }}"
+
+root_password: "{{ vault_root_password }}"
+
+admin_password: "{{ vault_admin_password }}"
+
+
+
+db_name: joomla
+db_user: joomla
+
+project_root: "{{ playbook_dir }}/.."
+files_dir: "{{ project_root }}/files"
+db_host: "{{ hostvars[groups['db'][0]].ansible_host }}"
+web_host: "{{ hostvars[groups['web'][0]].ansible_host }}"

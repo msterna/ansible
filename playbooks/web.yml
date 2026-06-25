@@ -1,0 +1,197 @@
+---
+- name: Web server setup
+  hosts: web
+  become: yes    
+
+  vars_files:
+    - ../group_vars/proxmox.yml
+    - ../group_vars/all/vars.yml
+    - ../group_vars/all/vault.yml
+    - ../group_vars/web.yml
+
+  tasks:
+
+    - name: Aktualizacja pakietów
+      apt:
+        update_cache: yes
+
+
+    - name: Instalacja nginx PHP i narzędzi
+      apt:
+        name:
+          - nginx
+          - php-fpm
+          - php-cli
+          - php-mysql
+          - php-xml
+          - php-curl
+          - php-gd
+          - php-mbstring
+          - php-zip
+          - php-intl
+          - php-imagick
+          - unzip
+          - curl
+          - wget
+          - mariadb-client
+        state: present
+
+
+    - name: Instalacja phpMyAdmin
+      apt:
+        name:
+          - phpmyadmin
+        state: present
+
+
+    - name: Tworzenie katalogu Joomla
+      file:
+        path: "{{ web_root }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: "0755"
+
+
+    - name: Start nginx
+      systemd:
+        name: nginx
+        state: started
+        enabled: yes
+
+
+    - name: Start PHP-FPM
+      systemd:
+        name: "php{{ php_version }}-fpm"
+        state: started
+        enabled: yes
+
+    - name: Kopia konfiguracji Joomla nginx
+      template:
+        src: "{{ template_dir }}/joomla.conf.j2"
+        dest: /etc/nginx/sites-available/joomla
+      notify:
+        - nginx config test
+        - restart nginx
+
+
+    - name: Włączenie strony Joomla
+      file:
+        src: /etc/nginx/sites-available/joomla
+        dest: /etc/nginx/sites-enabled/joomla
+        state: link
+      notify:
+        - nginx config test
+        - restart nginx
+
+    - name: Wyłączenie domyślnego nginx
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: 
+        - nginx config test
+        - restart nginx
+
+    - name: Configure PHP settings
+      template:
+        src: "{{ template_dir }}/php.ini.j2"
+        dest: "/etc/php/{{ php_version }}/fpm/conf.d/99-joomla.ini"
+      notify:
+        - restart php-fpm
+    
+    - name: Configure phpMyAdmin nginx site
+      template:
+        src: "{{ template_dir }}/phpmyadmin.conf.j2"
+        dest: /etc/nginx/sites-available/phpmyadmin
+      notify:
+        - nginx config test
+        - restart nginx
+
+    - name: Enable phpMyAdmin nginx site
+      file:
+        src: /etc/nginx/sites-available/phpmyadmin
+        dest: /etc/nginx/sites-enabled/phpmyadmin
+        state: link
+      notify:
+        - nginx config test
+        - restart nginx
+    
+    - name: Check if phpMyAdmin blowfish secret exists
+      ansible.builtin.stat:
+        path: /etc/phpmyadmin/blowfish_secret
+      register: blowfish_file
+
+    - name: Generate phpMyAdmin blowfish secret
+      ansible.builtin.command:
+        cmd: openssl rand -hex 16
+      register: generated_blowfish_secret
+      when: not blowfish_file.stat.exists
+      changed_when: true
+
+
+    - name: Save phpMyAdmin blowfish secret
+      ansible.builtin.copy:
+        content: "{{ generated_blowfish_secret.stdout }}"
+        dest: /etc/phpmyadmin/blowfish_secret
+        owner: root
+        group: root
+        mode: '0600'
+      when: not blowfish_file.stat.exists
+
+
+    - name: Read existing phpMyAdmin blowfish secret
+      ansible.builtin.slurp:
+        src: /etc/phpmyadmin/blowfish_secret
+      register: existing_blowfish_secret
+      when: blowfish_file.stat.exists
+
+
+    - name: Set phpMyAdmin blowfish variable
+      ansible.builtin.set_fact:
+        phpmyadmin_blowfish_secret: >-
+          {{
+            (generated_blowfish_secret.stdout
+            if not blowfish_file.stat.exists
+            else existing_blowfish_secret.content | b64decode | trim)
+          }}
+
+    - name: Configure phpMyAdmin connection
+      template:
+        src: "{{ template_dir }}/phpmyadmin.config.inc.php.j2"
+        dest: /etc/phpmyadmin/config.inc.php
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - restart php-fpm
+        - restart nginx
+
+    - name: Configure phpMyAdmin connection test
+      ansible.builtin.template:
+        src: "{{ template_dir }}/phpmyadmin.config.inc.php.j2"
+        dest: /etc/phpmyadmin/config.inc.php
+      tags:
+        - phpmyadmin
+    
+    - name: Configure PHP session directory permissions
+      ansible.builtin.file:
+        path: /var/lib/php/sessions
+        state: directory
+        owner: root
+        group: root
+        mode: '1733'
+
+  handlers:
+     
+    - name: nginx config test
+      command: nginx -t
+
+    - name: restart nginx
+      systemd:
+        name: nginx
+        state: restarted
+
+    - name: restart php-fpm
+      service:
+        name: "php{{ php_version }}-fpm"
+        state: restarted

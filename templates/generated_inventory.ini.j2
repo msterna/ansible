@@ -1,0 +1,30 @@
+[proxmox]
+pve01 ansible_host={{ hostvars['pve01'].ansible_host }}
+
+
+[proxmox:vars]
+ansible_user=root
+
+{% set service_groups = ['web','db','postfix','rustdesk','django'] %}
+
+{% for group in service_groups %}
+
+[{{ group }}]
+{% for host in groups[group] | default([]) %}
+{{ host }} ansible_host={{ hostvars[host].ansible_host }} ansible_user=admin
+{% endfor %}
+
+{% endfor %}
+
+[servers]
+{% for group in service_groups %}
+{% for host in groups[group] | default([]) %}
+{{ host }}
+{% endfor %}
+{% endfor %}
+
+
+[all:vars]
+ansible_become=yes
+ansible_become_method=sudo
+ansible_python_interpreter=/usr/bin/python3

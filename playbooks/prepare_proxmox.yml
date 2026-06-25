@@ -1,0 +1,29 @@
+---
+- name: Prepare Proxmox
+  hosts: proxmox
+  become: yes
+
+  tasks:
+
+    - name: Find Debian template
+      ansible.builtin.shell:
+        cmd: >
+          pveam available |
+          awk '/{{ template_name }}/ {print $2; exit}'
+      register: deb_template
+      changed_when: false
+
+    - name: Save template name
+      ansible.builtin.set_fact:
+        lxc_template: "{{ deb_template.stdout }}"
+
+    - name: Download Debian template
+      ansible.builtin.command:
+        cmd: >
+          pveam download
+          {{ template_storage }}
+          {{ deb_template.stdout }}
+      when:
+        - deb_template.stdout != ""
+      args:
+        creates: "/var/lib/vz/template/cache/{{ deb_template.stdout }}"
