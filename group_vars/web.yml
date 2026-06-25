@@ -1,8 +1,6 @@
 ---
 web_root: /var/www/joomla
 
-template_dir: "{{ project_root }}/templates"
-
 site_domain: "{{ environment_domain }}"
 
 site_aliases:

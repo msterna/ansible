@@ -24,5 +24,6 @@ db_user: joomla
 
 project_root: "{{ playbook_dir }}/.."
 files_dir: "{{ project_root }}/files"
+template_dir: "{{ project_root }}/templates"
 db_host: "{{ hostvars[groups['db'][0]].ansible_host }}"
 web_host: "{{ hostvars[groups['web'][0]].ansible_host }}"
