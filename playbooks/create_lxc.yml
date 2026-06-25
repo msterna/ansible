@@ -64,6 +64,32 @@
       when:
         - item.features is defined
 
+    # LXC features are applied after container restart
+    # Required for Docker overlay2 in unprivileged LXC
+    - name: Stop containers
+      community.proxmox.proxmox:
+        api_host: "{{ proxmox_api_host }}"
+        api_user: "{{ proxmox_api_user }}"
+        api_password: "{{ proxmox_api_password }}"
+        node: "{{ node }}"
+        vmid: "{{ item.vmid + vmid_offset[deploy_env] }}"
+        state: stopped
+      loop: "{{ containers }}"
+      when:
+        - item.features is defined
+
+    - name: Start containers
+      community.proxmox.proxmox:
+        api_host: "{{ proxmox_api_host }}"
+        api_user: "{{ proxmox_api_user }}"
+        api_password: "{{ proxmox_api_password }}"
+        node: "{{ node }}"
+        vmid: "{{ item.vmid + vmid_offset[deploy_env] }}"
+        state: started
+      loop: "{{ containers }}"
+      when:
+        - item.features is defined
+
     - name: Wait for container
       ansible.builtin.command:
         cmd: >
