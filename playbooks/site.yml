@@ -4,6 +4,8 @@
 
 - import_playbook: common.yml
 
+- import_playbook: proxy.yml
+
 - import_playbook: web.yml
 
 - import_playbook: db.yml
