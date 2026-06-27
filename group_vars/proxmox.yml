@@ -1,12 +1,10 @@
 template_storage: local
 template_name: debian-13-standard
 
-deploy_env: test
+deploy_env: prod
 
-proxmox_api_host: 10.1.0.100
+proxmox_api_host: "{{ hostvars[inventory_hostname].ansible_host }}"
 proxmox_api_user: root@pam
-
-
 
 validate_certs: false
 
@@ -15,7 +13,7 @@ vmid_offset:
   test: 100
 
 ip_offset:
-  prod: 0
+  prod: 10
   test: 20
 
 node: proxmox
@@ -24,10 +22,10 @@ storage: local-lvm
 
 containers:
 
-  - vmid: 102
+  - vmid: 101
     hostname: proxy01
     role: proxy
-    ip_octet: 102
+    ip_octet: 101
     cores: 2
     memory: 1024
     swap: 512
@@ -36,46 +34,46 @@ containers:
     # Docker inside LXC requires nesting + keyctl + fuse
     features: "nesting=1,keyctl=1,fuse=1"   
 
-  - vmid: 103
+  - vmid: 102
     hostname: web01
     role: web
-    ip_octet: 103
+    ip_octet: 102
     cores: 4
     memory: 4096
     swap: 1024
     disk: 32
 
-  - vmid: 104
+  - vmid: 103
     hostname: db01
     role: db
-    ip_octet: 104
+    ip_octet: 103
     cores: 2
     memory: 2048
     swap: 512
     disk: 20
 
-  - vmid: 105
+  - vmid: 104
     hostname: postfix01
     role: postfix
-    ip_octet: 105
+    ip_octet: 104
     cores: 2
     memory: 1024
     swap: 512
     disk: 10
 
-  - vmid: 106
+  - vmid: 105
     hostname: rustdesk01
     role: rustdesk
-    ip_octet: 106
+    ip_octet: 105
     cores: 2
     memory: 1024
     swap: 512
     disk: 8
 
-  - vmid: 107
+  - vmid: 106
     hostname: django01
     role: django
-    ip_octet: 107
+    ip_octet: 106
     cores: 2
     memory: 2048
     swap: 512
