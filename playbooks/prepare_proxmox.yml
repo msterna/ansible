@@ -1,29 +1,44 @@
 ---
 - name: Prepare Proxmox
   hosts: proxmox
-  become: yes
+  become: true
 
   tasks:
 
-    - name: Find Debian template
-      ansible.builtin.shell:
-        cmd: >
-          pveam available |
-          awk '/{{ template_name }}/ {print $2; exit}'
+    - name: Update template list
+      ansible.builtin.command:
+        cmd: pveam update
+      changed_when: false
+
+    - name: Find latest Debian template
+      ansible.builtin.shell: |
+        pveam available \
+        | awk '/debian-13-standard/ {print $2; exit}'
       register: deb_template
       changed_when: false
+
+    - name: Fail if Debian template was not found
+      ansible.builtin.fail:
+        msg: "Nie znaleziono szablonu Debian 13."
+      when: deb_template.stdout == ""
 
     - name: Save template name
       ansible.builtin.set_fact:
         lxc_template: "{{ deb_template.stdout }}"
+
+    - name: Show selected template
+      ansible.builtin.debug:
+        msg: "Wybrany template: {{ lxc_template }}"
+
+    - name: Check if template is already downloaded
+      ansible.builtin.stat:
+        path: "/var/lib/vz/template/cache/{{ lxc_template }}"
+      register: template_file     
 
     - name: Download Debian template
       ansible.builtin.command:
         cmd: >
           pveam download
           {{ template_storage }}
-          {{ deb_template.stdout }}
-      when:
-        - deb_template.stdout != ""
-      args:
-        creates: "/var/lib/vz/template/cache/{{ deb_template.stdout }}"
+          {{ lxc_template }}
+      when: not template_file.stat.exists
