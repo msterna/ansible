@@ -115,7 +115,6 @@
         ansible_become_method: sudo
 
       loop: "{{ created_lxc.results }}"
-      # when: item.changed
 
     - name: Show dynamic hosts
       ansible.builtin.debug:
